@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pharos Network — RealFi Layer 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8C97A;
+    --gold-dim: #7a621e;
+    --black: #050507;
+    --deep: #080810;
+    --panel: #0d0d18;
+    --border: rgba(201,168,76,0.15);
+    --text: #e8e4d8;
+    --muted: #6b6555;
+    --white: #f5f1e8;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* CUSTOM CURSOR */
+  .cursor {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    background: var(--gold);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s ease, width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+    mix-blend-mode: difference;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(201,168,76,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.15s ease, width 0.3s ease, height 0.3s ease;
+  }
+  body:hover .cursor { opacity: 1; }
+
+  /* CANVAS BACKGROUND */
+  #bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    opacity: 0.35;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.025;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 4rem;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.4s, background 0.4s, backdrop-filter 0.4s;
+  }
+  nav.scrolled {
+    border-color: var(--border);
+    background: rgba(5,5,7,0.85);
+    backdrop-filter: blur(20px);
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    position: relative;
+  }
+  .logo-icon svg { width: 100%; height: 100%; }
+  .nav-wordmark {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--white);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .nav-wordmark span { color: var(--gold); }
+  .nav-links {
+    display: flex;
+    gap: 2.5rem;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.25s;
+  }
+  .nav-links a:hover { color: var(--gold); }
+  .nav-cta {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.6rem 1.4rem;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    text-decoration: none;
+    transition: background 0.25s, color 0.25s;
+  }
+  .nav-cta:hover { background: var(--gold); color: var(--black); }
+
+  /* SECTIONS */
+  section { position: relative; z-index: 2; }
+
+  /* ─── HERO ─── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    border: 1px solid var(--border);
+    padding: 0.4rem 1rem;
+    margin-bottom: 2.5rem;
+    width: fit-content;
+    animation: fadeUp 1s ease 0.2s both;
+  }
+  .hero-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .hero-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(4rem, 9vw, 9rem);
+    font-weight: 300;
+    line-height: 0.9;
+    color: var(--white);
+    margin-bottom: 0.3em;
+    animation: fadeUp 1s ease 0.4s both;
+  }
+  .hero-title em {
+    font-style: italic;
+    color: var(--gold);
+    display: block;
+  }
+  .hero-title .outline {
+    -webkit-text-stroke: 1px rgba(201,168,76,0.4);
+    color: transparent;
+  }
+
+  .hero-sub {
+    max-width: 560px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.9;
+    color: var(--muted);
+    margin-bottom: 3rem;
+    animation: fadeUp 1s ease 0.6s both;
+    letter-spacing: 0.02em;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    animation: fadeUp 1s ease 0.8s both;
+  }
+  .btn-primary {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 1rem 2.5rem;
+    background: var(--gold);
+    color: var(--black);
+    text-decoration: none;
+    font-weight: 700;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gold-light);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  .btn-primary:hover::after { transform: translateX(0); }
+  .btn-primary span { position: relative; z-index: 1; }
+  .btn-primary:hover { transform: translateY(-2px); }
+
+  .btn-ghost {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 1rem 2.5rem;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    text-decoration: none;
+    transition: border-color 0.25s, color 0.25s;
+  }
+  .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* HERO STATS STRIP */
+  .hero-stats {
+    position: absolute;
+    right: 4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    animation: fadeUp 1s ease 1s both;
+  }
+  .stat-item {
+    text-align: right;
+    position: relative;
+  }
+  .stat-item::before {
+    content: '';
+    position: absolute;
+    left: -2rem;
+    top: 50%;
+    width: 1.2rem;
+    height: 1px;
+    background: var(--gold-dim);
+  }
+  .stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.8rem;
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1;
+  }
+  .stat-value .unit {
+    font-size: 1rem;
+    color: var(--gold);
+    vertical-align: super;
+    font-family: 'Space Mono', monospace;
+  }
+  .stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  .hero-scroll {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    animation: fadeUp 1s ease 1.2s both;
+  }
+  .scroll-line {
+    width: 1px;
+    height: 50px;
+    background: linear-gradient(to bottom, var(--gold), transparent);
+    animation: scrollDrop 1.5s ease infinite;
+  }
+  @keyframes scrollDrop {
+    0% { transform: scaleY(0); transform-origin: top; }
+    50% { transform: scaleY(1); transform-origin: top; }
+    51% { transform: scaleY(1); transform-origin: bottom; }
+    100% { transform: scaleY(0); transform-origin: bottom; }
+  }
+  .scroll-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    writing-mode: vertical-rl;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── TICKER ─── */
+  .ticker-wrap {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0.9rem 0;
+    overflow: hidden;
+    background: rgba(201,168,76,0.03);
+  }
+  .ticker-track {
+    display: flex;
+    gap: 0;
+    animation: ticker 30s linear infinite;
+    white-space: nowrap;
+  }
+  .ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 2.5rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+  }
+  .ticker-item .sep {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--gold-dim);
+    flex-shrink: 0;
+  }
+  .ticker-item strong { color: var(--gold); }
+  @keyframes ticker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* ─── ABOUT / REALFI ─── */
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-label::before {
+    content: '';
+    width: 2rem;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .realfi {
+    padding: 8rem 4rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6rem;
+    align-items: center;
+  }
+  .realfi-left .big-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.5rem, 4.5vw, 5rem);
+    font-weight: 300;
+    line-height: 1.1;
+    color: var(--white);
+    margin-bottom: 2rem;
+  }
+  .realfi-left .big-text em { color: var(--gold); font-style: italic; }
+  .realfi-left p {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 2;
+    color: var(--muted);
+    margin-bottom: 1.2rem;
+  }
+
+  .raised-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.5rem;
+    border: 1px solid var(--border);
+    padding: 1.2rem 2rem;
+    margin-top: 1rem;
+    background: rgba(201,168,76,0.04);
+  }
+  .raised-amount {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.5rem;
+    color: var(--gold);
+    font-weight: 300;
+    line-height: 1;
+  }
+  .raised-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .raised-meta strong { color: var(--text); display: block; }
+
+  /* Architecture diagram */
+  .arch-diagram {
+    position: relative;
+  }
+  .arch-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .arch-layer {
+    padding: 1.5rem 2rem;
+    border: 1px solid var(--border);
+    position: relative;
+    transition: border-color 0.3s, background 0.3s;
+    cursor: default;
+    margin-bottom: -1px;
+  }
+  .arch-layer:hover {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.05);
+    z-index: 1;
+  }
+  .arch-layer-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    margin-bottom: 0.4rem;
+  }
+  .arch-layer-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 0.4rem;
+  }
+  .arch-layer-desc {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .arch-layer::after {
+    content: '';
+    position: absolute;
+    right: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px; height: 20px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .arch-layer:hover::after {
+    border-color: var(--gold);
+    background: var(--gold);
+  }
+
+  /* ─── FEATURES GRID ─── */
+  .features {
+    padding: 8rem 4rem;
+    background: var(--deep);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .features-header {
+    margin-bottom: 5rem;
+    max-width: 600px;
+  }
+  .features-header h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.5rem, 4vw, 4.5rem);
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1.05;
+  }
+  .features-header h2 em { color: var(--gold); font-style: italic; }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+  }
+  .feat-card {
+    background: var(--deep);
+    padding: 3rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .feat-card:hover { background: rgba(201,168,76,0.04); }
+  .feat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 0;
+    background: var(--gold);
+    transition: height 0.4s ease;
+  }
+  .feat-card:hover::before { height: 100%; }
+  .feat-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 4rem;
+    color: rgba(201,168,76,0.08);
+    font-weight: 300;
+    line-height: 1;
+    margin-bottom: 1.5rem;
+    transition: color 0.3s;
+  }
+  .feat-card:hover .feat-number { color: rgba(201,168,76,0.15); }
+  .feat-icon {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  .feat-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 0.8rem;
+  }
+  .feat-desc {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    line-height: 1.9;
+    color: var(--muted);
+  }
+  .feat-tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    color: var(--gold);
+    margin-top: 1.2rem;
+  }
+
+  /* ─── PERFORMANCE ─── */
+  .performance {
+    padding: 8rem 4rem;
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 6rem;
+    align-items: center;
+  }
+  .perf-bars { margin-top: 3rem; }
+  .perf-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .perf-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .perf-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+  }
+  .perf-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    color: var(--white);
+    font-weight: 300;
+  }
+  .perf-track {
+    height: 2px;
+    background: rgba(255,255,255,0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  .perf-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 1.5s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .perf-fill.pharos { background: linear-gradient(90deg, var(--gold), var(--gold-light)); }
+  .perf-fill.animated { transform: scaleX(1); }
+
+  .perf-right h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.5rem, 4vw, 4.5rem);
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1.05;
+    margin-bottom: 1.5rem;
+  }
+  .perf-right h2 em { color: var(--gold); font-style: italic; }
+  .perf-right p {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 2;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .big-stat-block {
+    margin-top: 2.5rem;
+    padding: 2rem;
+    border: 1px solid var(--border);
+    background: rgba(201,168,76,0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .big-stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 4rem;
+    color: var(--gold);
+    font-weight: 300;
+    line-height: 1;
+  }
+  .big-stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+  }
+
+  /* ─── TOKEN ─── */
+  .token-section {
+    padding: 8rem 4rem;
+    background: var(--deep);
+    border-top: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .token-section::before {
+    content: '$PROS';
+    position: absolute;
+    right: -2rem;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20vw;
+    color: rgba(201,168,76,0.02);
+    font-weight: 300;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .token-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6rem;
+    align-items: start;
+  }
+  .token-left h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.5rem, 4vw, 4.5rem);
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1.05;
+    margin-bottom: 1.5rem;
+  }
+  .token-left h2 em { color: var(--gold); font-style: italic; }
+  .token-left p {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    line-height: 2;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .token-uses {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .token-use {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.2rem 0;
+    border-bottom: 1px solid var(--border);
+    transition: padding-left 0.3s;
+  }
+  .token-use:hover { padding-left: 0.8rem; }
+  .use-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--gold);
+    flex-shrink: 0;
+    transition: background 0.25s;
+  }
+  .token-use:hover .use-dot { background: var(--gold); }
+  .use-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+  .use-text span { color: var(--muted); margin-left: 0.5rem; }
+
+  .supply-visual {
+    position: relative;
+  }
+  .supply-ring {
+    width: 260px;
+    height: 260px;
+    margin: 0 auto 3rem;
+    position: relative;
+  }
+  .supply-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .supply-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .supply-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    color: var(--gold);
+    font-weight: 300;
+    line-height: 1;
+  }
+  .supply-unit {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+
+  .supply-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .legend-pct {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    color: var(--white);
+    font-weight: 300;
+  }
+
+  /* ─── BACKERS ─── */
+  .backers {
+    padding: 5rem 4rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .backers-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    margin-bottom: 3rem;
+  }
+  .backers-list {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 3rem 5rem;
+  }
+  .backer {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 300;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.08em;
+    transition: color 0.3s;
+    cursor: default;
+  }
+  .backer:hover { color: var(--text); }
+  .backer strong { color: rgba(201,168,76,0.4); font-style: italic; }
+  .backer:hover strong { color: var(--gold); }
+
+  /* ─── CTA ─── */
+  .cta-section {
+    padding: 10rem 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(201,168,76,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta-section h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(3rem, 6vw, 7rem);
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 1.5rem;
+  }
+  .cta-section h2 em { color: var(--gold); font-style: italic; display: block; }
+  .cta-section p {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 3.5rem;
+    line-height: 2;
+  }
+  .cta-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    padding: 3rem 4rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer-copy {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .footer-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+  .footer-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.25s;
+  }
+  .footer-links a:hover { color: var(--gold); }
+
+  /* REVEAL ANIMATION */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 900px) {
+    nav { padding: 1.2rem 1.5rem; }
+    .nav-links { display: none; }
+    .hero { padding: 0 1.5rem; padding-top: 6rem; }
+    .hero-stats { display: none; }
+    .realfi, .performance, .token-grid { grid-template-columns: 1fr; gap: 3rem; padding: 5rem 1.5rem; }
+    .features { padding: 5rem 1.5rem; }
+    .features-grid { grid-template-columns: 1fr; }
+    .backers { padding: 4rem 1.5rem; }
+    .cta-section { padding: 6rem 1.5rem; }
+    footer { flex-direction: column; gap: 1.5rem; text-align: center; padding: 2rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="20,2 38,32 2,32" stroke="#C9A84C" stroke-width="1.5" fill="none"/>
+        <polygon points="20,10 30,28 10,28" fill="rgba(201,168,76,0.15)"/>
+        <circle cx="20" cy="20" r="3" fill="#C9A84C"/>
+        <line x1="20" y1="2" x2="20" y2="38" stroke="#C9A84C" stroke-width="0.5" opacity="0.3"/>
+        <line x1="2" y1="32" x2="38" y2="32" stroke="#C9A84C" stroke-width="0.5" opacity="0.3"/>
+      </svg>
+    </div>
+    <div class="nav-wordmark">Pharos<span>.</span></div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#performance">Performance</a></li>
+    <li><a href="#token">$PROS</a></li>
+    <li><a href="#ecosystem">Ecosystem</a></li>
+  </ul>
+  <a href="#" class="nav-cta">Launch App</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span>Mainnet Live — Dec 2025</span>
+  </div>
+  <h1 class="hero-title">
+    The<br>
+    <em>Financial</em>
+    <span class="outline">Internet.</span>
+  </h1>
+  <p class="hero-sub">
+    Pharos is the fastest EVM Layer-1 ever built — engineered from the ground up to unify real-world assets, institutional finance, and decentralized liquidity at internet scale.
+  </p>
+  <div class="hero-actions">
+    <a href="#" class="btn-primary"><span>Build on Pharos</span></a>
+    <a href="#architecture" class="btn-ghost">Explore Architecture</a>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat-item">
+      <div class="stat-value"><span class="counter" data-target="130">0</span><span class="unit">K+</span></div>
+      <div class="stat-label">TPS (testnet)</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">&lt;<span class="counter" data-target="1">0</span><span class="unit">s</span></div>
+      <div class="stat-label">Finality</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">$<span class="counter" data-target="52">0</span><span class="unit">M</span></div>
+      <div class="stat-label">Total Raised</div>
+    </div>
+  </div>
+
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <div class="scroll-text">Scroll</div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-track" id="ticker">
+    <div class="ticker-item"><span class="sep"></span><strong>$PROS</strong> Native Token<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>130,000+ TPS<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span><strong>RWA</strong> Tokenization<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>Sub-second Finality<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span><strong>$44M</strong> Series A<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>EVM + WASM Dual VM<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span><strong>SPNs</strong> Modular Architecture<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>zkKYC Compliance<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span><strong>TradFi</strong> × DeFi Bridge<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>$50 Trillion Market<span class="sep"></span></div>
+    <!-- Duplicate for seamless loop -->
+    <div class="ticker-item"><span class="sep"></span><strong>$PROS</strong> Native Token<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>130,000+ TPS<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span><strong>RWA</strong> Tokenization<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>Sub-second Finality<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span><strong>$44M</strong> Series A<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>EVM + WASM Dual VM<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span><strong>SPNs</strong> Modular Architecture<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>zkKYC Compliance<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span><strong>TradFi</strong> × DeFi Bridge<span class="sep"></span></div>
+    <div class="ticker-item"><span class="sep"></span>$50 Trillion Market<span class="sep"></span></div>
+  </div>
+</div>
+
+<!-- REALFI / ABOUT -->
+<section class="realfi" id="architecture">
+  <div class="realfi-left reveal">
+    <div class="section-label">What is Pharos</div>
+    <h2 class="big-text">
+      Where <em>Real Assets</em><br>Meet the Chain.
+    </h2>
+    <p>
+      Most blockchains were built for speculation. Pharos was built for finance. It delivers payment-grade, institution-ready infrastructure — handling the performance, security, and compliance demands of real-world financial systems.
+    </p>
+    <p>
+      From stablecoin rails to solar-backed assets, bonds, funds, and cross-border settlements — Pharos brings the $50 trillion RWA market on-chain with institutional precision.
+    </p>
+    <div class="raised-card">
+      <div class="raised-amount">$52M</div>
+      <div class="raised-meta">
+        <strong>Total Funding Raised</strong>
+        Series A led by Sumitomo × Chainlink
+      </div>
+    </div>
+  </div>
+
+  <div class="arch-diagram reveal" style="transition-delay:0.2s">
+    <div class="section-label">Architecture</div>
+    <div class="arch-layers">
+      <div class="arch-layer">
+        <div class="arch-layer-tag">L1-Extension</div>
+        <div class="arch-layer-name">Special Processing Networks</div>
+        <div class="arch-layer-desc">Domain-specific execution layers (SPNs) with independent validator sets, native restaking, and cross-SPN interoperability.</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-tag">L1-Core</div>
+        <div class="arch-layer-name">Parallel Execution Engine</div>
+        <div class="arch-layer-desc">AsyncBFT consensus with dual VM (EVM + WASM), speculative parallel execution, and sub-second finality across a decentralized validator set.</div>
+      </div>
+      <div class="arch-layer">
+        <div class="arch-layer-tag">L1-Base</div>
+        <div class="arch-layer-name">High-Performance Data Availability</div>
+        <div class="arch-layer-desc">Hardware-accelerated data availability with Delta-Encoded Multi-Version Merkle Tree — 80% lower storage overhead at maximum throughput.</div>
+      </div>
+      <div class="arch-layer" style="margin-top:1px">
+        <div class="arch-layer-tag">Pharos VM</div>
+        <div class="arch-layer-name">Parallel Merklization & Indexing</div>
+        <div class="arch-layer-desc">Optimized for real-time verification and seamless TradFi system integration. Full lifecycle asynchronous pipelining for uninterrupted performance.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="ecosystem">
+  <div class="features-header reveal">
+    <div class="section-label">Core Capabilities</div>
+    <h2>Built for the <em>demands</em> of real finance.</h2>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card reveal">
+      <div class="feat-number">01</div>
+      <div class="feat-title">Parallel Execution</div>
+      <div class="feat-desc">DP4-level parallelism — simultaneous parallel execution, full lifecycle pipelining, and high-performance authenticated storage. The 20-lane highway versus the single road.</div>
+      <span class="feat-tag">130,000+ TPS</span>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.1s">
+      <div class="feat-number">02</div>
+      <div class="feat-title">RWA Native</div>
+      <div class="feat-desc">Purpose-built for tokenized real-world assets — bonds, funds, energy projects, real estate, private credit. Not retrofitted. Engineered from the ground up for financial assets.</div>
+      <span class="feat-tag">$50T Market</span>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.2s">
+      <div class="feat-number">03</div>
+      <div class="feat-title">Compliance-Native</div>
+      <div class="feat-desc">zkDID and zkKYC at the protocol layer. Digital identity, programmable AML, and audit trails baked in — aligning with regulation while keeping finance open and inclusive.</div>
+      <span class="feat-tag">zkKYC</span>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.1s">
+      <div class="feat-number">04</div>
+      <div class="feat-title">Modular SPNs</div>
+      <div class="feat-desc">Special Processing Networks unlock domain-specific execution — AI inference, high-frequency trading, DePIN, or any specialized financial workload — without congesting mainnet.</div>
+      <span class="feat-tag">Infinitely Scalable</span>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.2s">
+      <div class="feat-number">05</div>
+      <div class="feat-title">Cross-Chain Liquidity</div>
+      <div class="feat-desc">Native cross-SPN and cross-chain communication enables atomic execution, shared data, and multi-VM interactions. Assets flow freely across the entire financial stack.</div>
+      <span class="feat-tag">EVM + WASM</span>
+    </div>
+    <div class="feat-card reveal" style="transition-delay:0.3s">
+      <div class="feat-number">06</div>
+      <div class="feat-title">Institutional Grade</div>
+      <div class="feat-desc">Built by former AntChain leadership and top minds from Microsoft Research and Stanford. The infrastructure trust that institutions, fintechs, and asset managers demand.</div>
+      <span class="feat-tag">Series A Backed</span>
+    </div>
+  </div>
+</section>
+
+<!-- PERFORMANCE -->
+<section class="performance" id="performance">
+  <div class="reveal">
+    <div class="section-label">Performance Benchmark</div>
+    <div class="perf-bars">
+      <div class="perf-row">
+        <div class="perf-meta">
+          <span class="perf-name">Pharos Network</span>
+          <span class="perf-val">130,000+ TPS</span>
+        </div>
+        <div class="perf-track"><div class="perf-fill pharos" data-width="1" style="width:100%"></div></div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-meta">
+          <span class="perf-name">Solana</span>
+          <span class="perf-val">~65,000 TPS</span>
+        </div>
+        <div class="perf-track"><div class="perf-fill" style="width:100%" data-scale="0.5"></div></div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-meta">
+          <span class="perf-name">Sui</span>
+          <span class="perf-val">~12,000 TPS</span>
+        </div>
+        <div class="perf-track"><div class="perf-fill" style="width:100%" data-scale="0.092"></div></div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-meta">
+          <span class="perf-name">Ethereum</span>
+          <span class="perf-val">~15 TPS</span>
+        </div>
+        <div class="perf-track"><div class="perf-fill" style="width:100%" data-scale="0.0001"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="perf-right reveal" style="transition-delay:0.2s">
+    <div class="section-label">Why Speed Matters</div>
+    <h2>Finance moves at the <em>speed of trust.</em></h2>
+    <p>
+      A cross-border settlement confirmed in under one second. A tokenized bond trade that settles the moment it's signed. This isn't theoretical — it's the foundation of a new financial internet.
+    </p>
+    <p>
+      Pharos's multi-stage pipelining delivers optimal CPU and I/O efficiency, while its Delta-Encoded Merkle Tree cuts storage overhead by 80% compared to traditional chains.
+    </p>
+    <div class="big-stat-block">
+      <div class="big-stat-num">DP4</div>
+      <div class="big-stat-label">Degree of Parallelism — targeting DP5 via heterogeneous SPNs</div>
+    </div>
+  </div>
+</section>
+
+<!-- TOKEN -->
+<section class="token-section" id="token">
+  <div class="token-grid">
+    <div class="token-left reveal">
+      <div class="section-label">Native Token</div>
+      <h2>The <em>$PROS</em> Economy.</h2>
+      <p>
+        $PROS is the lifeblood of the Pharos ecosystem — powering gas, staking, governance, and incentives across every SPN, application, and financial service built on the network.
+      </p>
+      <p>
+        With a fixed genesis supply of 1 billion tokens and a structured vesting framework, $PROS aligns long-term builder, validator, and community incentives.
+      </p>
+      <div class="token-uses">
+        <div class="token-use">
+          <div class="use-dot"></div>
+          <div class="use-text">Gas Fees <span>— powers every on-chain transaction</span></div>
+        </div>
+        <div class="token-use">
+          <div class="use-dot"></div>
+          <div class="use-text">Staking <span>— secure the network, earn rewards</span></div>
+        </div>
+        <div class="token-use">
+          <div class="use-dot"></div>
+          <div class="use-text">Governance <span>— shape the future of RealFi</span></div>
+        </div>
+        <div class="token-use">
+          <div class="use-dot"></div>
+          <div class="use-text">SPN Incentives <span>— reward specialized network operators</span></div>
+        </div>
+        <div class="token-use">
+          <div class="use-dot"></div>
+          <div class="use-text">Native Restaking <span>— extend security to new SPNs</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="supply-visual reveal" style="transition-delay:0.2s">
+      <div class="section-label">Supply Distribution</div>
+      <div class="supply-ring">
+        <svg viewBox="0 0 260 260">
+          <circle cx="130" cy="130" r="110" fill="none" stroke="rgba(201,168,76,0.06)" stroke-width="28"/>
+          <!-- Community/Ecosystem: 35% -->
+          <circle cx="130" cy="130" r="110" fill="none" stroke="#C9A84C" stroke-width="28"
+            stroke-dasharray="240 450" stroke-dashoffset="0" opacity="0.9"/>
+          <!-- Team/Investors: 25% -->
+          <circle cx="130" cy="130" r="110" fill="none" stroke="#7a621e" stroke-width="28"
+            stroke-dasharray="172 518" stroke-dashoffset="-242"/>
+          <!-- Treasury: 20% -->
+          <circle cx="130" cy="130" r="110" fill="none" stroke="#3d3110" stroke-width="28"
+            stroke-dasharray="138 552" stroke-dashoffset="-416"/>
+          <!-- Public: 12% -->
+          <circle cx="130" cy="130" r="110" fill="none" stroke="#E8C97A" stroke-width="28"
+            stroke-dasharray="82 607" stroke-dashoffset="-556" opacity="0.7"/>
+          <!-- Validators: 8% -->
+          <circle cx="130" cy="130" r="110" fill="none" stroke="#9a7b32" stroke-width="28"
+            stroke-dasharray="55 635" stroke-dashoffset="-640"/>
+        </svg>
+        <div class="supply-center">
+          <div class="supply-num">1B</div>
+          <div class="supply-unit">Genesis Supply</div>
+        </div>
+      </div>
+      <div class="supply-legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#C9A84C"></div>
+          <div class="legend-label">Community & Ecosystem</div>
+          <div class="legend-pct">35%</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#7a621e"></div>
+          <div class="legend-label">Team & Advisors</div>
+          <div class="legend-pct">25%</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#3d3110"></div>
+          <div class="legend-label">Treasury</div>
+          <div class="legend-pct">20%</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#E8C97A"></div>
+          <div class="legend-label">Public Sale</div>
+          <div class="legend-pct">12%</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#9a7b32"></div>
+          <div class="legend-label">Validator Incentives</div>
+          <div class="legend-pct">8%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BACKERS -->
+<section class="backers reveal">
+  <div class="backers-label">Backed by the Best in TradFi × Web3</div>
+  <div class="backers-list">
+    <div class="backer"><strong>Sumitomo</strong> Corporation</div>
+    <div class="backer"><strong>Chainlink</strong></div>
+    <div class="backer"><strong>SNZ</strong> Holding</div>
+    <div class="backer"><strong>Flow</strong> Traders</div>
+    <div class="backer"><strong>GCL</strong> Energy</div>
+    <div class="backer"><strong>Morpho</strong></div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-glow"></div>
+  <h2 class="reveal">
+    The Borderless<br>
+    <em>Financial City.</em>
+  </h2>
+  <p class="reveal" style="transition-delay:0.15s">
+    Join the builders, institutions, and communities building<br>the next layer of global finance on Pharos.
+  </p>
+  <div class="cta-actions reveal" style="transition-delay:0.3s">
+    <a href="#" class="btn-primary"><span>Start Building</span></a>
+    <a href="#" class="btn-ghost">Read the Docs</a>
+    <a href="#" class="btn-ghost">Join Community</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-copy">© 2026 Pharos Network. All rights reserved.</div>
+  <ul class="footer-links">
+    <li><a href="#">pharos.xyz</a></li>
+    <li><a href="#">GitHub</a></li>
+    <li><a href="#">Twitter</a></li>
+    <li><a href="#">Discord</a></li>
+    <li><a href="#">Docs</a></li>
+  </ul>
+</footer>
+
+<script>
+// ── CUSTOM CURSOR ──
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+function animCursor() {
+  cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
+  rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
+  ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+  requestAnimationFrame(animCursor);
+}
+animCursor();
+document.querySelectorAll('a, button, .arch-layer, .feat-card, .backer, .token-use').forEach(el => {
+  el.addEventListener('mouseenter', () => { cursor.style.width='20px'; cursor.style.height='20px'; ring.style.width='60px'; ring.style.height='60px'; });
+  el.addEventListener('mouseleave', () => { cursor.style.width='12px'; cursor.style.height='12px'; ring.style.width='36px'; ring.style.height='36px'; });
+});
+
+// ── CANVAS GRID ──
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, nodes = [], animFrame;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  initNodes();
+}
+
+function initNodes() {
+  nodes = [];
+  const count = Math.floor((W * H) / 18000);
+  for (let i = 0; i < count; i++) {
+    nodes.push({
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.5
+    });
+  }
+}
+
+function drawCanvas() {
+  ctx.clearRect(0, 0, W, H);
+  // Draw grid
+  ctx.strokeStyle = 'rgba(201,168,76,0.04)';
+  ctx.lineWidth = 1;
+  const gs = 80;
+  for (let x = 0; x < W; x += gs) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gs) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Move & draw nodes
+  nodes.forEach(n => {
+    n.x += n.vx; n.y += n.vy;
+    if (n.x < 0 || n.x > W) n.vx *= -1;
+    if (n.y < 0 || n.y > H) n.vy *= -1;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(201,168,76,0.5)';
+    ctx.fill();
+  });
+
+  // Draw connections
+  nodes.forEach((a, i) => {
+    nodes.slice(i + 1).forEach(b => {
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < 120) {
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = `rgba(201,168,76,${0.12 * (1 - d / 120)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    });
+  });
+
+  requestAnimationFrame(drawCanvas);
+}
+
+resize();
+window.addEventListener('resize', resize);
+drawCanvas();
+
+// ── NAV SCROLL ──
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 60);
+});
+
+// ── REVEAL ON SCROLL ──
+const reveals = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.12 });
+reveals.forEach(r => io.observe(r));
+
+// ── COUNTER ANIMATION ──
+function animCounter(el, target, suffix) {
+  let current = 0;
+  const inc = target / 60;
+  const step = () => {
+    current += inc;
+    if (current >= target) { el.textContent = target; return; }
+    el.textContent = Math.floor(current);
+    requestAnimationFrame(step);
+  };
+  step();
+}
+const counterObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const el = e.target;
+      const target = parseInt(el.dataset.target);
+      animCounter(el, target);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('.counter').forEach(c => counterObserver.observe(c));
+
+// ── PERFORMANCE BARS ──
+const barObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const fills = e.target.querySelectorAll('.perf-fill');
+      const scales = [1, 0.5, 0.092, 0.0001];
+      fills.forEach((f, i) => {
+        setTimeout(() => {
+          f.style.transform = `scaleX(${scales[i] || 1})`;
+          f.style.transition = 'transform 1.5s cubic-bezier(0.23, 1, 0.32, 1)';
+        }, i * 150);
+      });
+      barObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.3 });
+const perfBars = document.querySelector('.perf-bars');
+if (perfBars) barObserver.observe(perfBars);
+
+// Init bar styles
+document.querySelectorAll('.perf-fill').forEach(f => {
+  f.style.transform = 'scaleX(0)';
+  f.style.transformOrigin = 'left';
+});
+</script>
+</body>
+</html>
